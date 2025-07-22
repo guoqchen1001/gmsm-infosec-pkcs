@@ -29,40 +29,36 @@ go get [github.com/guoqchen1001/gmsm-infosec-pkcs](https://github.com/guoqchen10
 ## 使用示例
 
 下面是一个完整的示例，演示了如何初始化客户端、生成请求、发送并处理响应。
-
 ```go
 package main
 
 import (
 	"crypto/tls"
+	"flag"
 	"fmt"
 	pkcs "github.com/guoqchen1001/gmsm-infosec-pkcs"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
 
-// =================================================================
-// 3. 辅助函数
-// =================================================================
-
 func main() {
 	/*------------------------------参数初始化----start-------------------------------*/
 	fmt.Println("--- [Go] 参数初始化 ---")
-	var dir = filepath.Dir(os.Args[0])
 
-	// 证书存放位置按照实际存储地址修改
-	sslCertFile := filepath.Join(dir, "config/bank-cert/000-net-cert.pfx")
-	sslCertPwd := "11111111"
-	bankCertFile := filepath.Join(dir, "config/bank-cert/822_cert.cer")
-	clientCertFile := filepath.Join(dir, "config/client-cert/cert.cer")
-	clientPrivateKeyFile := filepath.Join(dir, "config/client-cert/sm2private.txt")
+	sslCertFile := flag.String("ssl-cert", "config/bank-cert/000-net-cert.pfx", "客户端网络证书 (pfx) 路径")
+	sslCertPwd := flag.String("ssl-pwd", "11111111", "客户端网络证书密码")
+	bankCertFile := flag.String("bank-cert", "config/bank-cert/822_cert.cer", "银行公钥证书路径")
+	clientCertFile := flag.String("client-cert", "config/client-cert/cert.cer", "客户端签名证书路径")
+	clientPrivateKeyFile := flag.String("client-key", "config/client-cert/sm2private.txt", "客户端私钥文件路径")
+
+	// 关键修正：在所有 flag 定义之后，调用 flag.Parse() 来解析命令行传入的参数
+	flag.Parse()
 
 	// 加载银行加密/验签公钥证书
-	bankCert, err := pkcs.GetX509CertificateFromFile(bankCertFile)
+	bankCert, err := pkcs.GetX509CertificateFromFile(*bankCertFile)
 	if err != nil {
 		fmt.Printf("加载银行证书失败: %v\n", err)
 		os.Exit(1)
@@ -70,7 +66,7 @@ func main() {
 	fmt.Println("银行证书加载成功")
 
 	// 加载客户端签名公钥证书
-	clientCert, err := pkcs.GetX509CertificateFromFile(clientCertFile)
+	clientCert, err := pkcs.GetX509CertificateFromFile(*clientCertFile)
 	if err != nil {
 		fmt.Printf("加载客户端签名证书失败: %v\n", err)
 		os.Exit(1)
@@ -78,7 +74,7 @@ func main() {
 	fmt.Println("客户端签名证书加载成功")
 
 	// 加载客户端签名/解密私钥
-	privateKeyBytes, err := ioutil.ReadFile(clientPrivateKeyFile)
+	privateKeyBytes, err := ioutil.ReadFile(*clientPrivateKeyFile)
 	if err != nil {
 		fmt.Printf("读取客户端私钥文件失败: %v\n", err)
 		os.Exit(1)
@@ -91,7 +87,7 @@ func main() {
 	fmt.Println("客户端私钥加载成功")
 
 	// 加载用于 mTLS 的客户端网络证书和私钥
-	tlsClientCert, err := pkcs.LoadPfx(sslCertFile, sslCertPwd)
+	tlsClientCert, err := pkcs.LoadPfxFromFile(*sslCertFile, *sslCertPwd)
 	if err != nil {
 		fmt.Printf("加载网络证书(PFX)失败: %v\n", err)
 		os.Exit(1)
@@ -100,9 +96,7 @@ func main() {
 
 	// 配置支持 mTLS 的 HTTP 客户端
 	tlsConfig := &tls.Config{
-		// 设置客户端证书，用于向服务器证明自己的身份
-		Certificates: []tls.Certificate{tlsClientCert},
-		// 在测试环境中，通常需要跳过对服务器证书的严格校验
+		Certificates:       []tls.Certificate{tlsClientCert},
 		InsecureSkipVerify: true,
 	}
 	transport := &http.Transport{
@@ -180,8 +174,8 @@ func main() {
 	/*------------------------------处理响应----end---------------------------------*/
 }
 
-
 ```
+
 
 ## 兼容性细节
 

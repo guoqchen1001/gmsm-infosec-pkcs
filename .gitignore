@@ -1,2 +1,12 @@
-/.idea
-/*.exe
+# 忽略所有操作系统生成的文件
+.DS_Store
+Thumbs.db
+
+# 忽略编译生成的二进制文件
+*.exe
+
+
+
+# 忽略IDE（如GoLand, VS Code）生成的配置文件
+.idea/
+.vscode/
